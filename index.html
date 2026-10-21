@@ -479,8 +479,8 @@ function shemaRecordDailyVisit(){
 function capture(){const data={};for(const k of PROGRESS_KEYS){const v=localStorage.getItem(k);if(v!==null)data[k]=v;}for(let i=1;i<=83;i++){const v=localStorage.getItem(NOTE_PREFIX+i);if(v!==null)data[NOTE_PREFIX+i]=v;}return {schema:1,saved_at:new Date().toISOString(),values:data};}
 function restore(data){if(!data||data.schema!==1||!data.values||typeof data.values!=='object')throw Error('Formato do progresso inválido.');const old=suppressSync;suppressSync=true;try{for(const [k,v] of Object.entries(data.values)){if((PROGRESS_KEYS.includes(k)||/^shemaNote(?:[1-9]|[1-7][0-9]|8[0-3])$/.test(k))&&typeof v==='string')localStorage.setItem(k,v);}refreshUI();}finally{suppressSync=old;}}
 function clearJourney(){const old=suppressSync;suppressSync=true;try{for(const k of PROGRESS_KEYS)localStorage.removeItem(k);for(let i=1;i<=83;i++)localStorage.removeItem(NOTE_PREFIX+i);localStorage.setItem('shemaXP','0');localStorage.setItem('shemaSteps','[false,false,false,false]');localStorage.setItem('shemaPlayable','[]');localStorage.setItem('shemaHouse','1');}finally{suppressSync=old;}}
-function archiveCurrent(owner){if(owner){localStorage.setItem('shemaV8AccountBackup:'+owner,JSON.stringify(capture()));}else if(!localStorage.getItem('shemaV8LegacyBackup')){localStorage.setItem('shemaV8LegacyBackup',JSON.stringify(capture()));}}
-function restoreAccountBackup(uid){try{const d=JSON.parse(localStorage.getItem('shemaV8AccountBackup:'+uid)||'null');if(d){clearJourney();restore(d);return true;}}catch(e){console.warn(e);}return false;}
+function archiveCurrent(owner){if(owner){localStorage.setItem('shemaV9AccountBackup:'+owner,JSON.stringify(capture()));}else if(!localStorage.getItem('shemaV9LegacyBackup')){localStorage.setItem('shemaV9LegacyBackup',JSON.stringify(capture()));}}
+function restoreAccountBackup(uid){try{const d=JSON.parse(localStorage.getItem('shemaV9AccountBackup:'+uid)||'null');if(d){clearJourney();restore(d);return true;}}catch(e){console.warn(e);}return false;}
 function refreshAccountProfile(){const level=Math.floor(Math.max(0,xp)/175)+1;const profileLevel=document.getElementById('profileLevel');if(profileLevel)profileLevel.textContent='Nível '+level+' · O Chamado';const apprentice=document.getElementById('shemaApprentice');if(apprentice)apprentice.hidden=xp<175;}
 function refreshUI(){try{xp=Number(localStorage.getItem('shemaXP')??0);steps=JSON.parse(localStorage.getItem('shemaSteps')||'[false,false,false,false]');avatar=localStorage.getItem('shemaAvatar')||'🧭';document.getElementById('profileName').textContent=localStorage.getItem('shemaName')||'Peregrino';document.getElementById('profileAvatar').textContent=avatar;document.getElementById('avatarHome').textContent=avatar;document.getElementById('xp').textContent=xp;document.getElementById('level').textContent=Math.floor(xp/175)+1;document.getElementById('xpbar').style.width=((xp%175)/175*100)+'%';update();phMapUpdate();restoreProgress();refreshAccountProfile();shemaRenderStreak();shemaRenderAchievements();}catch(e){console.warn('Shema: atualização da interface',e);}}
 async function pull(){const {data,error}=await client.from('user_progress').select('progress_data').eq('user_id',currentUser.id).maybeSingle();if(error)throw error;return data&&data.progress_data||null;}
@@ -518,13 +518,13 @@ function queuePush(){
   if(!syncing)syncTimer=setTimeout(()=>{if(epoch===sessionEpoch)push();},1300);
 }
 function showApp(yes){box.hidden=!!yes;if(app)app.inert=!yes;document.getElementById('shemaLogout').style.display=yes?'inline-block':'none';}
-async function initialize(session){const user=session&&session.user;if(!user){sessionEpoch++;clearTimeout(syncTimer);currentUser=null;loadedUser=null;showApp(false);return;}if(loadedUser===user.id){showApp(true);shemaRecordDailyVisit();return;}sessionEpoch++;clearTimeout(syncTimer);const epoch=sessionEpoch;const previousOwner=localStorage.getItem('shemaV8LocalOwner');currentUser=user;loadedUser=null;showApp(false);message('Carregando sua jornada…');try{const cloud=await pull();if(epoch!==sessionEpoch||currentUser?.id!==user.id)return;
+async function initialize(session){const user=session&&session.user;if(!user){sessionEpoch++;clearTimeout(syncTimer);currentUser=null;loadedUser=null;showApp(false);return;}if(loadedUser===user.id){showApp(true);shemaRecordDailyVisit();return;}sessionEpoch++;clearTimeout(syncTimer);const epoch=sessionEpoch;const previousOwner=localStorage.getItem('shemaV9LocalOwner');currentUser=user;loadedUser=null;showApp(false);message('Carregando sua jornada…');try{const cloud=await pull();if(epoch!==sessionEpoch||currentUser?.id!==user.id)return;
 if(previousOwner!==user.id){archiveCurrent(previousOwner);clearJourney();}
 if(cloud){clearJourney();restore(cloud);setStatus('✓ Progresso recuperado da nuvem.');}
 else if(previousOwner===user.id){setStatus('Sua jornada local está disponível. Salve-a na nuvem.');}
 else if(restoreAccountBackup(user.id)){setStatus('Jornada deste usuário recuperada do backup local.');}
 else{refreshUI();setStatus('Conta sem progresso. Você pode começar do zero ou importar uma jornada antiga.');}
-localStorage.setItem('shemaV8LocalOwner',user.id);loadedUser=user.id;message('');showApp(true);shemaRecordDailyVisit();
+localStorage.setItem('shemaV9LocalOwner',user.id);loadedUser=user.id;message('');showApp(true);shemaRecordDailyVisit();
 }catch(e){message('Não foi possível verificar o progresso: '+errText(e)+' Tente recarregar.');showApp(false);}}
 
 if(!window.supabase?.createClient){message('Serviço de login indisponível. Conecte-se à internet e recarregue.');submit.disabled=true;return;}
@@ -559,7 +559,7 @@ resetButton.onclick=async()=>{
     try{for(const [k,v] of Object.entries(values))localStorage.setItem(k,v);refreshUI();}
     finally{suppressSync=old;}
     shemaSyncRevision=shemaSyncedRevision;
-    localStorage.removeItem('shemaV8AccountBackup:'+owner);
+    localStorage.removeItem('shemaV9AccountBackup:'+owner);
     setStatus('✓ Jornada reiniciada e salva na nuvem.');
     alert('Jornada reiniciada. Você pode começar novamente!');
   }catch(e){
@@ -568,7 +568,7 @@ resetButton.onclick=async()=>{
 };
 
 const importButton=document.createElement('button');importButton.type='button';importButton.className='btn secondary';importButton.textContent='Importar jornada antiga deste aparelho';panel.insertBefore(importButton,panel.lastElementChild);
-importButton.onclick=async()=>{if(!currentUser||!loadedUser)return;const raw=localStorage.getItem('shemaV8LegacyBackup');if(!raw){setStatus('Nenhuma jornada antiga foi encontrada neste aparelho.');return;}if(!confirm('Importar o progresso antigo para esta conta? Isso substituirá o progresso atual desta conta e o próximo salvamento atualizará a nuvem.'))return;try{const legacy=JSON.parse(raw);archiveCurrent(currentUser.id);clearJourney();restore(legacy);setStatus('Jornada antiga importada neste aparelho. Toque em Salvar progresso na nuvem para confirmar o backup.');}catch(e){setStatus('Não foi possível importar: '+errText(e));}};
+importButton.onclick=async()=>{if(!currentUser||!loadedUser)return;const raw=localStorage.getItem('shemaV9LegacyBackup');if(!raw){setStatus('Nenhuma jornada antiga foi encontrada neste aparelho.');return;}if(!confirm('Importar o progresso antigo para esta conta? Isso substituirá o progresso atual desta conta e o próximo salvamento atualizará a nuvem.'))return;try{const legacy=JSON.parse(raw);archiveCurrent(currentUser.id);clearJourney();restore(legacy);setStatus('Jornada antiga importada neste aparelho. Toque em Salvar progresso na nuvem para confirmar o backup.');}catch(e){setStatus('Não foi possível importar: '+errText(e));}};
 
 document.getElementById('shemaSyncNow').onclick=()=>push();document.getElementById('shemaSyncRestore').onclick=async()=>{if(!confirm('Substituir o progresso deste aparelho pelo progresso salvo na nuvem?'))return;try{const cloud=await pull();if(!cloud){setStatus('Ainda não há progresso salvo na nuvem.');return;}restore(cloud);shemaRecordDailyVisit();setStatus('✓ Progresso recuperado.');}catch(e){setStatus(errText(e));}};
 // Observe mudanças de progresso sem alterar o funcionamento das missões existentes.
