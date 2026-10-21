@@ -97,21 +97,43 @@ main{max-width:780px;margin:auto;padding:18px}.screen{display:none}.screen.activ
 <div id="modal" class="modal"><div class="sheet"><div class="row"><div><div class="ey">Personagem</div><h2>Personalizar</h2></div><button class="btn small secondary" onclick="closeModal()">Fechar</button></div><p>Escolha um nome e um símbolo para sua jornada.</p><input id="nameInput" style="width:100%;padding:12px;border-radius:12px;border:1px solid #443527;background:#11100d;color:white" placeholder="Nome do peregrino"><div style="margin-top:12px"><button class="btn secondary" onclick="setAvatar('🧭')">🧭 Peregrino</button><button class="btn secondary" onclick="setAvatar('🕊️')">🕊️ Mensageiro</button><button class="btn secondary" onclick="setAvatar('🛡️')">🛡️ Guardião</button></div><button class="btn" onclick="saveProfile()">Salvar personagem</button></div></div>
 <div class="toast" id="toast"></div>
 </div>
-<script>
-let xp=Number(localStorage.shemaXP??460),steps=JSON.parse(localStorage.shemaSteps||'[false,false,false,false]'),answered=false,avatar=localStorage.shemaAvatar||'🧭';
-document.getElementById('profileName').textContent=localStorage.shemaName||'Peregrino';document.getElementById('profileAvatar').textContent=avatar;document.getElementById('avatarHome').textContent=avatar;
+<script>// Shema V9: namespace exclusivo para o progresso local.
+// A Biblia offline pode continuar compartilhada, pois nao contem progresso pessoal.
+const SHEMA_V9_STORAGE_PREFIX='shema-v9-teste::';
+const shemaV9Storage=new Proxy(Object.create(null),{
+  get(_target,property){
+    if(property==='getItem')return key=>window.localStorage.getItem(SHEMA_V9_STORAGE_PREFIX+String(key));
+    if(property==='setItem')return (key,value)=>{
+      const k=String(key);window.localStorage.setItem(SHEMA_V9_STORAGE_PREFIX+k,String(value));
+      if(typeof queuePush==='function' && (typeof PROGRESS_KEYS!=='undefined' && PROGRESS_KEYS.includes(k) || /^shemaNote\d+$/.test(k)))queuePush();
+    };
+    if(property==='removeItem')return key=>window.localStorage.removeItem(SHEMA_V9_STORAGE_PREFIX+String(key));
+    if(property==='key')return index=>{const keys=Object.keys(window.localStorage).filter(k=>k.startsWith(SHEMA_V9_STORAGE_PREFIX));return keys[index]?.slice(SHEMA_V9_STORAGE_PREFIX.length)??null;};
+    if(property==='length')return Object.keys(window.localStorage).filter(k=>k.startsWith(SHEMA_V9_STORAGE_PREFIX)).length;
+    if(typeof property==='symbol')return undefined;
+    return window.localStorage.getItem(SHEMA_V9_STORAGE_PREFIX+String(property));
+  },
+  set(_target,property,value){
+    const k=String(property);window.localStorage.setItem(SHEMA_V9_STORAGE_PREFIX+k,String(value));
+    if(typeof queuePush==='function' && (typeof PROGRESS_KEYS!=='undefined' && PROGRESS_KEYS.includes(k) || /^shemaNote\d+$/.test(k)))queuePush();
+    return true;
+  }
+});
+
+let xp=Number(shemaV9Storage.shemaXP??0),steps=JSON.parse(shemaV9Storage.shemaSteps||'[false,false,false,false]'),answered=false,avatar=shemaV9Storage.shemaAvatar||'🧭';
+document.getElementById('profileName').textContent=shemaV9Storage.shemaName||'Peregrino';document.getElementById('profileAvatar').textContent=avatar;document.getElementById('avatarHome').textContent=avatar;
 function go(id){if(id==='bible'&&!window.shemaReadingFromMission){const ret=document.getElementById('shemaDailyReadingReturn');if(ret)ret.style.display='none';}if(id==='profile'&&typeof refreshAccountProfile==='function')refreshAccountProfile();document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.s===id));scrollTo({top:0,behavior:'smooth'})}
 let shemaToastTimer;function toast(t){let e=document.getElementById('toast');if(!e)return;clearTimeout(shemaToastTimer);e.textContent=t;e.classList.remove('show');void e.offsetWidth;e.classList.add('show');shemaToastTimer=setTimeout(()=>e.classList.remove('show'),3000)}
-function save(){localStorage.shemaXP=xp;localStorage.shemaSteps=JSON.stringify(steps)}
+function save(){shemaV9Storage.shemaXP=xp;shemaV9Storage.shemaSteps=JSON.stringify(steps)}
 function shemaRewardAnimation(n){const old=document.getElementById('shemaXpReward');if(old)old.remove();const el=document.createElement('div');el.id='shemaXpReward';el.textContent='✨ +'+n+' XP';el.setAttribute('role','status');document.body.appendChild(el);requestAnimationFrame(()=>el.classList.add('visible'));setTimeout(()=>{el.classList.remove('visible');setTimeout(()=>el.remove(),450)},2600);}
 function addXP(n){xp+=n;save();shemaRewardAnimation(n);document.getElementById('xp').textContent=xp;document.getElementById('level').textContent=Math.floor(xp/175)+1;document.getElementById('xpbar').style.width=((xp%175)/175*100)+'%';refreshAccountProfile();toast('+'+n+' XP ✨')}
 function update(){document.getElementById('daily').textContent=steps.filter(Boolean).length+'/4';if(steps.filter(Boolean).length>=3)document.getElementById('finish').style.display='block'}
 function step(i){if(!steps[i]){steps[i]=true;addXP([50,40,30,50][i])}update()}
 function answer(el,ok){if(answered)return;answered=true;el.classList.add(ok?'ok':'bad');if(ok){steps[2]=true;addXP(30);toast('Resposta correta!')}else toast('Volte ao texto e tente novamente.');update();save()}
-function openModal(){document.getElementById('nameInput').value=localStorage.shemaName||'';document.getElementById('modal').classList.add('show')}
+function openModal(){document.getElementById('nameInput').value=shemaV9Storage.shemaName||'';document.getElementById('modal').classList.add('show')}
 function closeModal(){document.getElementById('modal').classList.remove('show')}
 function setAvatar(a){avatar=a;document.getElementById('profileAvatar').textContent=a;document.getElementById('avatarHome').textContent=a}
-function saveProfile(){let n=document.getElementById('nameInput').value.trim()||'Peregrino';localStorage.shemaName=n;localStorage.shemaAvatar=avatar;document.getElementById('profileName').textContent=n;closeModal();toast('Personagem atualizado ✨')}
+function saveProfile(){let n=document.getElementById('nameInput').value.trim()||'Peregrino';shemaV9Storage.shemaName=n;shemaV9Storage.shemaAvatar=avatar;document.getElementById('profileName').textContent=n;closeModal();toast('Personagem atualizado ✨')}
 document.getElementById('xp').textContent=xp;document.getElementById('level').textContent=Math.floor(xp/175)+1;document.getElementById('xpbar').style.width=((xp%175)/175*100)+'%';update();
 
 const houseData=[
@@ -213,7 +235,7 @@ async function saveFullBibleToCache(payload){
  }
  await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error('Falha ao salvar a Bíblia'));tx.onabort=()=>reject(tx.error||Error('Salvamento interrompido'));});
  if(total<1100)throw Error('Foram reconhecidos apenas '+total+' capítulos com texto. A fonte pode ter mudado de formato; nada será marcado como download completo.');
- localStorage.setItem(BIBLE_FULL_FLAG,JSON.stringify({ready:true,chapters:total,verses:versesTotal,version:'Almeida 1819'}));return total;
+ shemaV9Storage.setItem(BIBLE_FULL_FLAG,JSON.stringify({ready:true,chapters:total,verses:versesTotal,version:'Almeida 1819'}));return total;
 }
 async function preloadFullBible(){
  const btn=document.getElementById('preloadBibleBtn');if(btn)btn.disabled=true;
@@ -230,8 +252,8 @@ async function preloadFullBible(){
  finally{if(btn)btn.disabled=false;}
 }
 function openBibleCache(){return new Promise(resolve=>{if(!('indexedDB' in window)){resolve(null);return;}try{const req=indexedDB.open(BIBLE_CACHE_DB,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('chapters'))req.result.createObjectStore('chapters')};req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null)}catch(e){resolve(null)}})}
-async function getBibleCache(key){const db=await openBibleCache();if(db){return new Promise(resolve=>{try{const tx=db.transaction('chapters','readonly'),req=tx.objectStore('chapters').get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>resolve(null)}catch(e){resolve(null)}})}try{return JSON.parse(localStorage.getItem('shemaBible:'+key)||'null')}catch(e){return null}}
-async function putBibleCache(key,value){const db=await openBibleCache();if(db){return new Promise(resolve=>{try{const tx=db.transaction('chapters','readwrite');tx.objectStore('chapters').put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>resolve(false)}catch(e){resolve(false)}})}try{localStorage.setItem('shemaBible:'+key,JSON.stringify(value));return true}catch(e){return false}}
+async function getBibleCache(key){const db=await openBibleCache();if(db){return new Promise(resolve=>{try{const tx=db.transaction('chapters','readonly'),req=tx.objectStore('chapters').get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>resolve(null)}catch(e){resolve(null)}})}try{return JSON.parse(shemaV9Storage.getItem('shemaBible:'+key)||'null')}catch(e){return null}}
+async function putBibleCache(key,value){const db=await openBibleCache();if(db){return new Promise(resolve=>{try{const tx=db.transaction('chapters','readwrite');tx.objectStore('chapters').put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>resolve(false)}catch(e){resolve(false)}})}try{shemaV9Storage.setItem('shemaBible:'+key,JSON.stringify(value));return true}catch(e){return false}}
 function renderBibleChapter(book,chapter,verses,source){const out=document.getElementById('bibleText'),status=document.getElementById('bibleStatus');const usable=verses.filter(v=>v&&String(v.text||'').trim());if(!usable.length){out.innerHTML='<p>O texto deste capítulo não veio em um formato reconhecido. Tente preparar a Bíblia completa novamente.</p>';status.textContent='Não foi possível identificar o texto dos versículos.';return;}const verseHtml=usable.map(v=>'<div class="verse"><b>'+escapeBibleText(v.number)+'</b> '+escapeBibleText(v.text)+'</div>').join('');out.innerHTML='<h2>'+book[0]+' '+chapter+'</h2>'+verseHtml;status.textContent='Capítulo carregado · '+(source==='cache'?'salvo neste aparelho · disponível offline':'Bíblia Livre (Almeida 1819) · capítulo salvo para leitura offline')}
 async function loadBibleChapter(){
  initBibleReader();const b=bibleBooks[Number(document.getElementById('bibleBook').value)],ch=document.getElementById('bibleChapter').value,key=b[1]+'-'+ch;
@@ -245,10 +267,10 @@ function openPsalm23(){window.shemaReadingFromMission='quest';initBibleReader();
 function shemaReaderBack(){const origin=window.shemaReadingFromMission;window.shemaReadingFromMission=null;const r=document.getElementById('shemaDailyReadingReturn');if(r)r.style.display='none';go(origin==='playhouse'?'playhouse':origin==='quest'?'quest':'home');}
 function shemaReaderNext(){initBibleReader();const book=document.getElementById('bibleBook'),chapter=document.getElementById('bibleChapter');if(!book||!chapter)return;const max=chapter.options.length;const n=Number(chapter.value);if(n<max){chapter.value=String(n+1);}else if(Number(book.value)<bibleBooks.length-1){book.value=String(Number(book.value)+1);updateBibleChapters();chapter.value='1';}else{toast('Você chegou ao último capítulo da Bíblia.');return;}const r=document.getElementById('shemaDailyReadingReturn');if(r)r.style.display='none';window.shemaReadingFromMission=null;loadBibleChapter();go('bible');}
 function completePsalm23Reading(){const first=!steps[0];step(0);window.shemaReadingFromMission=null;document.getElementById('shemaDailyReadingReturn').style.display='none';go('quest');if(!first)toast('Leitura já concluída ✓ Continue para a reflexão.');}
-function finishFour(){if(!steps[3]){steps[3]=true;addXP(50)}update();document.getElementById('nextHouse').style.display='block';localStorage.shemaTask4Done='1';toast('Tarefa 4 concluída! ⚔️');saveProgress();}
-function advanceHouse(){let p=phProgress();p[0]=p[1]=p[2]=p[3]=true;localStorage.setItem('shemaPlayable',JSON.stringify(p));localStorage.shemaHouse='5';phMapUpdate();toast('Casa 5 desbloqueada! 👤');go('map');saveProgress();}
-function saveProgress(){localStorage.shemaXP=xp;localStorage.shemaSteps=JSON.stringify(steps);}
-function restoreProgress(){initBibleReader();try{const full=JSON.parse(localStorage.getItem(BIBLE_FULL_FLAG)||'null');if(full&&full.ready){setBibleDownloadProgress(100,'Bíblia completa salva neste aparelho · '+full.chapters+' capítulos disponíveis offline');const btn=document.getElementById('preloadBibleBtn');if(btn)btn.textContent='✓ Bíblia completa salva para uso offline';}}catch(e){}if(localStorage.shemaHouse&&Number(localStorage.shemaHouse)>=5){const h=document.getElementById('house5');if(h)h.classList.remove('locked');}if(localStorage.shemaTask4Done==='1'||steps[3]){const n=document.getElementById('nextHouse');if(n)n.style.display='block';}}
+function finishFour(){if(!steps[3]){steps[3]=true;addXP(50)}update();document.getElementById('nextHouse').style.display='block';shemaV9Storage.shemaTask4Done='1';toast('Tarefa 4 concluída! ⚔️');saveProgress();}
+function advanceHouse(){let p=phProgress();p[0]=p[1]=p[2]=p[3]=true;shemaV9Storage.setItem('shemaPlayable',JSON.stringify(p));shemaV9Storage.shemaHouse='5';phMapUpdate();toast('Casa 5 desbloqueada! 👤');go('map');saveProgress();}
+function saveProgress(){shemaV9Storage.shemaXP=xp;shemaV9Storage.shemaSteps=JSON.stringify(steps);}
+function restoreProgress(){initBibleReader();try{const full=JSON.parse(shemaV9Storage.getItem(BIBLE_FULL_FLAG)||'null');if(full&&full.ready){setBibleDownloadProgress(100,'Bíblia completa salva neste aparelho · '+full.chapters+' capítulos disponíveis offline');const btn=document.getElementById('preloadBibleBtn');if(btn)btn.textContent='✓ Bíblia completa salva para uso offline';}}catch(e){}if(shemaV9Storage.shemaHouse&&Number(shemaV9Storage.shemaHouse)>=5){const h=document.getElementById('house5');if(h)h.classList.remove('locked');}if(shemaV9Storage.shemaTask4Done==='1'||steps[3]){const n=document.getElementById('nextHouse');if(n)n.style.display='block';}}
 document.addEventListener('DOMContentLoaded',restoreProgress);
 
 
@@ -359,13 +381,13 @@ EXTRA_TOPICS.forEach((t,i)=>{
  PH.push([t[0],t[1],t[2],t[3],t[4],[t[4],t[5],t[6]],t[7],t[8],t[9],xp,t[10],t[11],region.title]);
 });
 let phN=1,phRight=false;
-function phProgress(){try{let saved=JSON.parse(localStorage.getItem('shemaPlayable')||'[true,true,true,false,false,false,false,false,false,false]');if(!Array.isArray(saved))saved=[];while(saved.length<PH.length)saved.push(false);return saved.slice(0,PH.length)}catch(e){return Array.from({length:PH.length},(_,i)=>i<3)}}
+function phProgress(){try{let saved=JSON.parse(shemaV9Storage.getItem('shemaPlayable')||'[]');if(!Array.isArray(saved))saved=[];while(saved.length<PH.length)saved.push(false);return saved.slice(0,PH.length)}catch(e){return Array.from({length:PH.length},()=>false)}}
 function phUnlocked(){let p=phProgress(),n=1;for(let i=0;i<p.length;i++){if(p[i])n=i+2;else break}return Math.min(PH.length,n)}
-function phOpen(n){if(n>phUnlocked()){if(typeof toast==='function')toast('Conclua a casa anterior para avançar.');return}phN=n;phRight=false;let d=PH[n-1];document.getElementById('phCount').textContent='Jornada · Casa '+n+' de '+PH.length+(d[12]?' · '+d[12]:'');document.getElementById('phTitle').textContent=d[0];document.getElementById('phRef').textContent=d[1];document.getElementById('phPassage').textContent=d[2];document.getElementById('phQuestion').textContent=d[3];document.getElementById('phReflection').textContent=d[6];document.getElementById('phPractice').textContent=d[7];document.getElementById('phChrist').textContent=d[8];document.getElementById('phNote').value=localStorage.getItem('shemaNote'+n)||'';document.getElementById('phCommit').checked=false;document.getElementById('phFinish').disabled=true;document.getElementById('phFeedback').textContent='Escolha uma resposta.';document.getElementById('phOptions').innerHTML=d[5].map((x,i)=>'<button onclick="phChoose(this,'+i+')">'+x+'</button>').join('');go('playhouse')}
+function phOpen(n){if(n>phUnlocked()){if(typeof toast==='function')toast('Conclua a casa anterior para avançar.');return}phN=n;phRight=false;let d=PH[n-1];document.getElementById('phCount').textContent='Jornada · Casa '+n+' de '+PH.length+(d[12]?' · '+d[12]:'');document.getElementById('phTitle').textContent=d[0];document.getElementById('phRef').textContent=d[1];document.getElementById('phPassage').textContent=d[2];document.getElementById('phQuestion').textContent=d[3];document.getElementById('phReflection').textContent=d[6];document.getElementById('phPractice').textContent=d[7];document.getElementById('phChrist').textContent=d[8];document.getElementById('phNote').value=shemaV9Storage.getItem('shemaNote'+n)||'';document.getElementById('phCommit').checked=false;document.getElementById('phFinish').disabled=true;document.getElementById('phFeedback').textContent='Escolha uma resposta.';document.getElementById('phOptions').innerHTML=d[5].map((x,i)=>'<button onclick="phChoose(this,'+i+')">'+x+'</button>').join('');go('playhouse')}
 function phChoose(b,i){document.querySelectorAll('#phOptions button').forEach(x=>x.classList.remove('good','bad'));phRight=PH[phN-1][5][i]===PH[phN-1][4];b.classList.add(phRight?'good':'bad');document.getElementById('phFeedback').textContent=phRight?'Resposta correta! Pense em como praticar essa verdade.':'Ainda não. Releia a passagem e tente novamente.';document.getElementById('phFinish').disabled=!(phRight&&document.getElementById('phCommit').checked)}
 document.addEventListener('DOMContentLoaded',()=>{let c=document.getElementById('phCommit');if(c)c.onchange=()=>document.getElementById('phFinish').disabled=!(phRight&&c.checked);phMapRender();phMapUpdate()});
 document.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target&&e.target.matches('[id^=mapHouse][role=button]')){e.preventDefault();let n=Number(e.target.id.replace('mapHouse',''));phOpen(n)}});
-function phFinish(){if(!phRight||!document.getElementById('phCommit').checked)return;let p=phProgress(),i=phN-1;if(!p[i]){p[i]=true;localStorage.setItem('shemaPlayable',JSON.stringify(p));let xp=PH[i][9];if(typeof addXP==='function')addXP(xp);else localStorage.setItem('shemaXP',String(Number(localStorage.getItem('shemaXP')||0)+xp))}localStorage.setItem('shemaNote'+phN,document.getElementById('phNote').value);phMapUpdate();if(typeof toast==='function')toast('Casa concluída! +'+PH[i][9]+' XP');if(phN<PH.length){if(phN%10===0){let nextRegion=REGION_INFO.find(r=>r.start===phN+1);alert('Região concluída! '+(nextRegion?'Próxima região: '+nextRegion.title+'.':'Continue caminhando na Palavra.'));}if(confirm('Casa concluída! Ir para a próxima casa?'))phOpen(phN+1);else go('map')}else{alert('Você concluiu as '+PH.length+' casas desta jornada! Continue crescendo no conhecimento de Cristo e na prática da Palavra.');go('map')}}
+function phFinish(){if(!phRight||!document.getElementById('phCommit').checked)return;let p=phProgress(),i=phN-1;if(!p[i]){p[i]=true;shemaV9Storage.setItem('shemaPlayable',JSON.stringify(p));let xp=PH[i][9];if(typeof addXP==='function')addXP(xp);else shemaV9Storage.setItem('shemaXP',String(Number(shemaV9Storage.getItem('shemaXP')||0)+xp))}shemaV9Storage.setItem('shemaNote'+phN,document.getElementById('phNote').value);phMapUpdate();if(typeof toast==='function')toast('Casa concluída! +'+PH[i][9]+' XP');if(phN<PH.length){if(phN%10===0){let nextRegion=REGION_INFO.find(r=>r.start===phN+1);alert('Região concluída! '+(nextRegion?'Próxima região: '+nextRegion.title+'.':'Continue caminhando na Palavra.'));}if(confirm('Casa concluída! Ir para a próxima casa?'))phOpen(phN+1);else go('map')}else{alert('Você concluiu as '+PH.length+' casas desta jornada! Continue crescendo no conhecimento de Cristo e na prática da Palavra.');go('map')}}
 function fillRegionFilters(){
  const ids=['mapRegionFilter','libraryRegionFilter'];
  ids.forEach(id=>{const el=document.getElementById(id);if(!el||el.dataset.ready)return;REGION_INFO.forEach((r,i)=>{const o=document.createElement('option');o.value=r.title;o.textContent=(i+1)+'. '+r.title+' · casas '+r.start+'–'+r.end;el.appendChild(o)});el.dataset.ready='1'});
@@ -442,7 +464,7 @@ function shemaPreviousDate(day){
   return d.toISOString().slice(0,10);
 }
 function shemaRenderAchievements(){
-  const streak=Math.max(0,Number(localStorage.getItem('shemaStreakCount'))||0);
+  const streak=Math.max(0,Number(shemaV9Storage.getItem('shemaStreakCount'))||0);
   const completed=typeof phProgress==='function'?phProgress().filter(Boolean).length:0;
   const total=typeof PH!=='undefined'?PH.length:83;
   const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
@@ -459,30 +481,30 @@ function shemaRenderAchievements(){
 }
 function shemaRenderStreak(){
   const el=document.getElementById('shemaStreak');if(!el)return;
-  const count=Math.max(0,Number(localStorage.getItem('shemaStreakCount'))||0);
+  const count=Math.max(0,Number(shemaV9Storage.getItem('shemaStreakCount'))||0);
   el.textContent='🔥 '+count+' '+(count===1?'dia':'dias');
   shemaRenderAchievements();
 }
 function shemaRecordDailyVisit(){
   if(!currentUser||loadedUser!==currentUser.id)return;
   const today=shemaBrazilDate();
-  const last=localStorage.getItem('shemaStreakLastDate');
+  const last=shemaV9Storage.getItem('shemaStreakLastDate');
   if(last===today){shemaRenderStreak();return;}
   const previous=shemaPreviousDate(today);
-  const old=Math.max(0,Number(localStorage.getItem('shemaStreakCount'))||0);
+  const old=Math.max(0,Number(shemaV9Storage.getItem('shemaStreakCount'))||0);
   const count=(last===previous&&old>0)?old+1:1;
-  localStorage.setItem('shemaStreakCount',String(count));
-  localStorage.setItem('shemaStreakLastDate',today);
+  shemaV9Storage.setItem('shemaStreakCount',String(count));
+  shemaV9Storage.setItem('shemaStreakLastDate',today);
   shemaRenderStreak();
   queuePush();
 }
-function capture(){const data={};for(const k of PROGRESS_KEYS){const v=localStorage.getItem(k);if(v!==null)data[k]=v;}for(let i=1;i<=83;i++){const v=localStorage.getItem(NOTE_PREFIX+i);if(v!==null)data[NOTE_PREFIX+i]=v;}return {schema:1,saved_at:new Date().toISOString(),values:data};}
-function restore(data){if(!data||data.schema!==1||!data.values||typeof data.values!=='object')throw Error('Formato do progresso inválido.');const old=suppressSync;suppressSync=true;try{for(const [k,v] of Object.entries(data.values)){if((PROGRESS_KEYS.includes(k)||/^shemaNote(?:[1-9]|[1-7][0-9]|8[0-3])$/.test(k))&&typeof v==='string')localStorage.setItem(k,v);}refreshUI();}finally{suppressSync=old;}}
-function clearJourney(){const old=suppressSync;suppressSync=true;try{for(const k of PROGRESS_KEYS)localStorage.removeItem(k);for(let i=1;i<=83;i++)localStorage.removeItem(NOTE_PREFIX+i);localStorage.setItem('shemaXP','0');localStorage.setItem('shemaSteps','[false,false,false,false]');localStorage.setItem('shemaPlayable','[]');localStorage.setItem('shemaHouse','1');}finally{suppressSync=old;}}
-function archiveCurrent(owner){if(owner){localStorage.setItem('shemaV9AccountBackup:'+owner,JSON.stringify(capture()));}else if(!localStorage.getItem('shemaV9LegacyBackup')){localStorage.setItem('shemaV9LegacyBackup',JSON.stringify(capture()));}}
-function restoreAccountBackup(uid){try{const d=JSON.parse(localStorage.getItem('shemaV9AccountBackup:'+uid)||'null');if(d){clearJourney();restore(d);return true;}}catch(e){console.warn(e);}return false;}
+function capture(){const data={};for(const k of PROGRESS_KEYS){const v=shemaV9Storage.getItem(k);if(v!==null)data[k]=v;}for(let i=1;i<=83;i++){const v=shemaV9Storage.getItem(NOTE_PREFIX+i);if(v!==null)data[NOTE_PREFIX+i]=v;}return {schema:1,saved_at:new Date().toISOString(),values:data};}
+function restore(data){if(!data||data.schema!==1||!data.values||typeof data.values!=='object')throw Error('Formato do progresso inválido.');const old=suppressSync;suppressSync=true;try{for(const [k,v] of Object.entries(data.values)){if((PROGRESS_KEYS.includes(k)||/^shemaNote(?:[1-9]|[1-7][0-9]|8[0-3])$/.test(k))&&typeof v==='string')shemaV9Storage.setItem(k,v);}refreshUI();}finally{suppressSync=old;}}
+function clearJourney(){const old=suppressSync;suppressSync=true;try{for(const k of PROGRESS_KEYS)shemaV9Storage.removeItem(k);for(let i=1;i<=83;i++)shemaV9Storage.removeItem(NOTE_PREFIX+i);shemaV9Storage.setItem('shemaXP','0');shemaV9Storage.setItem('shemaSteps','[false,false,false,false]');shemaV9Storage.setItem('shemaPlayable','[]');shemaV9Storage.setItem('shemaHouse','1');}finally{suppressSync=old;}}
+function archiveCurrent(owner){if(owner){shemaV9Storage.setItem('shemaV9AccountBackup:'+owner,JSON.stringify(capture()));}else if(!shemaV9Storage.getItem('shemaV9LegacyBackup')){shemaV9Storage.setItem('shemaV9LegacyBackup',JSON.stringify(capture()));}}
+function restoreAccountBackup(uid){try{const d=JSON.parse(shemaV9Storage.getItem('shemaV9AccountBackup:'+uid)||'null');if(d){clearJourney();restore(d);return true;}}catch(e){console.warn(e);}return false;}
 function refreshAccountProfile(){const level=Math.floor(Math.max(0,xp)/175)+1;const profileLevel=document.getElementById('profileLevel');if(profileLevel)profileLevel.textContent='Nível '+level+' · O Chamado';const apprentice=document.getElementById('shemaApprentice');if(apprentice)apprentice.hidden=xp<175;}
-function refreshUI(){try{xp=Number(localStorage.getItem('shemaXP')??0);steps=JSON.parse(localStorage.getItem('shemaSteps')||'[false,false,false,false]');avatar=localStorage.getItem('shemaAvatar')||'🧭';document.getElementById('profileName').textContent=localStorage.getItem('shemaName')||'Peregrino';document.getElementById('profileAvatar').textContent=avatar;document.getElementById('avatarHome').textContent=avatar;document.getElementById('xp').textContent=xp;document.getElementById('level').textContent=Math.floor(xp/175)+1;document.getElementById('xpbar').style.width=((xp%175)/175*100)+'%';update();phMapUpdate();restoreProgress();refreshAccountProfile();shemaRenderStreak();shemaRenderAchievements();}catch(e){console.warn('Shema: atualização da interface',e);}}
+function refreshUI(){try{xp=Number(shemaV9Storage.getItem('shemaXP')??0);steps=JSON.parse(shemaV9Storage.getItem('shemaSteps')||'[false,false,false,false]');avatar=shemaV9Storage.getItem('shemaAvatar')||'🧭';document.getElementById('profileName').textContent=shemaV9Storage.getItem('shemaName')||'Peregrino';document.getElementById('profileAvatar').textContent=avatar;document.getElementById('avatarHome').textContent=avatar;document.getElementById('xp').textContent=xp;document.getElementById('level').textContent=Math.floor(xp/175)+1;document.getElementById('xpbar').style.width=((xp%175)/175*100)+'%';update();phMapUpdate();restoreProgress();refreshAccountProfile();shemaRenderStreak();shemaRenderAchievements();}catch(e){console.warn('Shema: atualização da interface',e);}}
 async function pull(){const {data,error}=await client.from('user_progress').select('progress_data').eq('user_id',currentUser.id).maybeSingle();if(error)throw error;return data&&data.progress_data||null;}
 async function push(){
   if(!currentUser||suppressSync||loadedUser!==currentUser.id)return false;
@@ -518,13 +540,13 @@ function queuePush(){
   if(!syncing)syncTimer=setTimeout(()=>{if(epoch===sessionEpoch)push();},1300);
 }
 function showApp(yes){box.hidden=!!yes;if(app)app.inert=!yes;document.getElementById('shemaLogout').style.display=yes?'inline-block':'none';}
-async function initialize(session){const user=session&&session.user;if(!user){sessionEpoch++;clearTimeout(syncTimer);currentUser=null;loadedUser=null;showApp(false);return;}if(loadedUser===user.id){showApp(true);shemaRecordDailyVisit();return;}sessionEpoch++;clearTimeout(syncTimer);const epoch=sessionEpoch;const previousOwner=localStorage.getItem('shemaV9LocalOwner');currentUser=user;loadedUser=null;showApp(false);message('Carregando sua jornada…');try{const cloud=await pull();if(epoch!==sessionEpoch||currentUser?.id!==user.id)return;
+async function initialize(session){const user=session&&session.user;if(!user){sessionEpoch++;clearTimeout(syncTimer);currentUser=null;loadedUser=null;showApp(false);return;}if(loadedUser===user.id){showApp(true);shemaRecordDailyVisit();return;}sessionEpoch++;clearTimeout(syncTimer);const epoch=sessionEpoch;const previousOwner=shemaV9Storage.getItem('shemaV9LocalOwner');currentUser=user;loadedUser=null;showApp(false);message('Carregando sua jornada…');try{const cloud=await pull();if(epoch!==sessionEpoch||currentUser?.id!==user.id)return;
 if(previousOwner!==user.id){archiveCurrent(previousOwner);clearJourney();}
 if(cloud){clearJourney();restore(cloud);setStatus('✓ Progresso recuperado da nuvem.');}
 else if(previousOwner===user.id){setStatus('Sua jornada local está disponível. Salve-a na nuvem.');}
 else if(restoreAccountBackup(user.id)){setStatus('Jornada deste usuário recuperada do backup local.');}
 else{refreshUI();setStatus('Conta sem progresso. Você pode começar do zero ou importar uma jornada antiga.');}
-localStorage.setItem('shemaV9LocalOwner',user.id);loadedUser=user.id;message('');showApp(true);shemaRecordDailyVisit();
+shemaV9Storage.setItem('shemaV9LocalOwner',user.id);loadedUser=user.id;message('');showApp(true);shemaRecordDailyVisit();
 }catch(e){message('Não foi possível verificar o progresso: '+errText(e)+' Tente recarregar.');showApp(false);}}
 
 if(!window.supabase?.createClient){message('Serviço de login indisponível. Conecte-se à internet e recarregue.');submit.disabled=true;return;}
@@ -556,10 +578,10 @@ resetButton.onclick=async()=>{
     if(epoch!==sessionEpoch||currentUser?.id!==owner||loadedUser!==owner)return;
     clearJourney();
     const old=suppressSync;suppressSync=true;
-    try{for(const [k,v] of Object.entries(values))localStorage.setItem(k,v);refreshUI();}
+    try{for(const [k,v] of Object.entries(values))shemaV9Storage.setItem(k,v);refreshUI();}
     finally{suppressSync=old;}
     shemaSyncRevision=shemaSyncedRevision;
-    localStorage.removeItem('shemaV9AccountBackup:'+owner);
+    shemaV9Storage.removeItem('shemaV9AccountBackup:'+owner);
     setStatus('✓ Jornada reiniciada e salva na nuvem.');
     alert('Jornada reiniciada. Você pode começar novamente!');
   }catch(e){
@@ -568,11 +590,10 @@ resetButton.onclick=async()=>{
 };
 
 const importButton=document.createElement('button');importButton.type='button';importButton.className='btn secondary';importButton.textContent='Importar jornada antiga deste aparelho';panel.insertBefore(importButton,panel.lastElementChild);
-importButton.onclick=async()=>{if(!currentUser||!loadedUser)return;const raw=localStorage.getItem('shemaV9LegacyBackup');if(!raw){setStatus('Nenhuma jornada antiga foi encontrada neste aparelho.');return;}if(!confirm('Importar o progresso antigo para esta conta? Isso substituirá o progresso atual desta conta e o próximo salvamento atualizará a nuvem.'))return;try{const legacy=JSON.parse(raw);archiveCurrent(currentUser.id);clearJourney();restore(legacy);setStatus('Jornada antiga importada neste aparelho. Toque em Salvar progresso na nuvem para confirmar o backup.');}catch(e){setStatus('Não foi possível importar: '+errText(e));}};
+importButton.onclick=async()=>{if(!currentUser||!loadedUser)return;const raw=shemaV9Storage.getItem('shemaV9LegacyBackup');if(!raw){setStatus('Nenhuma jornada antiga foi encontrada neste aparelho.');return;}if(!confirm('Importar o progresso antigo para esta conta? Isso substituirá o progresso atual desta conta e o próximo salvamento atualizará a nuvem.'))return;try{const legacy=JSON.parse(raw);archiveCurrent(currentUser.id);clearJourney();restore(legacy);setStatus('Jornada antiga importada neste aparelho. Toque em Salvar progresso na nuvem para confirmar o backup.');}catch(e){setStatus('Não foi possível importar: '+errText(e));}};
 
 document.getElementById('shemaSyncNow').onclick=()=>push();document.getElementById('shemaSyncRestore').onclick=async()=>{if(!confirm('Substituir o progresso deste aparelho pelo progresso salvo na nuvem?'))return;try{const cloud=await pull();if(!cloud){setStatus('Ainda não há progresso salvo na nuvem.');return;}restore(cloud);shemaRecordDailyVisit();setStatus('✓ Progresso recuperado.');}catch(e){setStatus(errText(e));}};
-// Observe mudanças de progresso sem alterar o funcionamento das missões existentes.
-const originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){const result=originalSet.apply(this,arguments);if(!suppressSync&&this===localStorage&&(PROGRESS_KEYS.includes(k)||/^shemaNote\d+$/.test(k)))queuePush();return result;};
+// As escritas no armazenamento V9 notificam a sincronizacao diretamente pelo adaptador.
 for(const fn of ['addXP','save','saveProfile','saveProgress','phFinish','advanceHouse','step','finishFour']){const orig=window[fn];if(typeof orig==='function')window[fn]=function(){const r=orig.apply(this,arguments);queuePush();return r;};}
 sw.onclick=()=>setMode(mode==='login'?'signup':'login');forgot.onclick=()=>setMode('reset');
 form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;message('Aguarde…');try{const mail=email.value.trim(),pass=password.value;if(mode==='signup'){const {error}=await client.auth.signUp({email:mail,password:pass,options:{emailRedirectTo:location.origin+location.pathname}});if(error)throw error;setMode('login');message('Cadastro solicitado. Verifique seu e-mail para confirmar a conta.');}else if(mode==='login'){const {error}=await client.auth.signInWithPassword({email:mail,password:pass});if(error)throw error;}else if(mode==='reset'){const {error}=await client.auth.resetPasswordForEmail(mail,{redirectTo:location.origin+location.pathname});if(error)throw error;setMode('login');message('Se o e-mail estiver cadastrado, você receberá o link de recuperação.');}else if(mode==='update'){const {error}=await client.auth.updateUser({password:pass});if(error)throw error;setMode('login');message('Senha atualizada.');}}catch(err){message(errText(err));}finally{submit.disabled=false;}};
