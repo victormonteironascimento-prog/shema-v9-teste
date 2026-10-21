@@ -405,7 +405,7 @@ function phRead(){window.shemaReadingFromMission='playhouse';let d=PH[phN-1],boo
 #shemaSyncPanel{margin:12px 0}#shemaSyncPanel .muted{line-height:1.5}
 </style>
 <div id="shemaAuth" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-<div class="auth-card"><h1 id="authTitle">✦ SHEMA V8</h1><p id="authSubtitle">Entre para continuar sua Jornada da Palavra.</p>
+<div class="auth-card"><h1 id="authTitle">✦ SHEMA V9</h1><p id="authSubtitle">Entre para continuar sua Jornada da Palavra.</p>
 <form id="authForm"><div id="authEmailGroup"><label for="authEmail">E-mail</label><input id="authEmail" type="email" autocomplete="email" required></div>
 <div id="authPasswordGroup"><label for="authPassword">Senha</label><input id="authPassword" type="password" autocomplete="current-password" minlength="8" required></div>
 <button id="authSubmit" type="submit">Entrar</button></form><p id="authMessage" role="status" aria-live="polite"></p>
@@ -427,7 +427,7 @@ const NOTE_PREFIX='shemaNote';
 if(app)app.inert=true;
 function message(s){msg.textContent=s||'';}
 function errText(e){const s=String(e&&e.message||'');if(/invalid login credentials/i.test(s))return 'E-mail ou senha incorretos, ou conta não confirmada.';if(/email not confirmed/i.test(s))return 'Confirme seu e-mail antes de entrar.';if(/rate limit|too many requests/i.test(s))return 'Muitas tentativas. Aguarde e tente novamente.';if(/password/i.test(s))return 'Verifique sua senha (mínimo de 8 caracteres).';return 'Falha: '+(s||'verifique sua conexão.');}
-function setMode(next){mode=next;message('');form.reset();emailGroup.hidden=next==='update';pwGroup.hidden=next==='reset';email.required=next!=='update';password.required=next!=='reset';password.autocomplete=(next==='signup'||next==='update')?'new-password':'current-password';document.getElementById('authTitle').textContent=next==='signup'?'Criar conta':next==='reset'?'Recuperar senha':next==='update'?'Nova senha':'✦ SHEMA V8';document.getElementById('authSubtitle').textContent=next==='signup'?'Confirme o e-mail após cadastrar.':next==='reset'?'Enviaremos um link de recuperação.':next==='update'?'Escolha uma nova senha.':'Entre para continuar sua Jornada da Palavra.';submit.textContent=next==='signup'?'Cadastrar':next==='reset'?'Enviar link':next==='update'?'Salvar senha':'Entrar';sw.textContent=next==='login'?'Criar conta':'Voltar para entrar';forgot.hidden=next==='reset'||next==='update';}
+function setMode(next){mode=next;message('');form.reset();emailGroup.hidden=next==='update';pwGroup.hidden=next==='reset';email.required=next!=='update';password.required=next!=='reset';password.autocomplete=(next==='signup'||next==='update')?'new-password':'current-password';document.getElementById('authTitle').textContent=next==='signup'?'Criar conta':next==='reset'?'Recuperar senha':next==='update'?'Nova senha':'✦ SHEMA V9';document.getElementById('authSubtitle').textContent=next==='signup'?'Confirme o e-mail após cadastrar.':next==='reset'?'Enviaremos um link de recuperação.':next==='update'?'Escolha uma nova senha.':'Entre para continuar sua Jornada da Palavra.';submit.textContent=next==='signup'?'Cadastrar':next==='reset'?'Enviar link':next==='update'?'Salvar senha':'Entrar';sw.textContent=next==='login'?'Criar conta':'Voltar para entrar';forgot.hidden=next==='reset'||next==='update';}
 function setStatus(s){const el=document.getElementById('shemaSyncStatus');if(el)el.textContent=s;}
 // Acesso diário por conta. Data civil no fuso de Brasília (America/Sao_Paulo).
 function shemaBrazilDate(){
