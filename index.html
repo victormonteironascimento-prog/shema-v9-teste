@@ -80,14 +80,33 @@ main{max-width:780px;margin:auto;padding:18px}.screen{display:none}.screen.activ
 <label>Referência externa (opcional)<input id="devLink" type="url" placeholder="https://..." style="width:100%;margin:8px 0 14px"></label>
 <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="devSave()">💾 Salvar anotação</button><button class="btn secondary" onclick="devReset()">Limpar formulário</button></div>
 <p id="devMessage" class="muted" aria-live="polite"></p></div>
+<div class="card"><h3>Mapas mentais</h3><p class="muted">Explore conexões visuais entre passagens, temas e referências. Comece com o mapa de Gênesis.</p><button class="btn secondary" onclick="mmOpen()">🧠 Abrir meus mapas mentais</button></div>
 <div class="card"><h3>Minhas anotações</h3><label>Buscar<input id="devSearch" type="search" placeholder="Título, passagem, conteúdo..." oninput="devRender()" style="width:100%;margin:8px 0 12px"></label><div id="devList"></div></div>
 <div class="card"><h3>Estudos dos 66 livros</h3><p class="muted">Suas anotações anteriores da Biblioteca Bíblica continuam guardadas por livro.</p><div id="devBookSummary"></div><button class="btn secondary" onclick="bookStudyOpen()">📚 Abrir Biblioteca dos 66 Livros</button></div>
 <button class="btn secondary" onclick="go('library')">← Voltar ao conteúdo</button>
 </section>
+<section id="mindmaps" class="screen">
+<div class="ey">SHEMA · ESTUDO VISUAL</div><h1>🧠 Mapas Mentais</h1>
+<p class="muted">Organize temas e conexões bíblicas. Os mapas são pessoais e não alteram seus XP.</p>
+<div class="card"><label>Meus mapas<select id="mmSelect" onchange="mmChoose(this.value)" style="width:100%;margin:8px 0 12px"></select></label>
+<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="mmCreate()">＋ Novo mapa</button><button class="btn secondary" onclick="mmDelete()">Excluir mapa</button></div></div>
+<div class="card"><label>Tema central<input id="mmTitle" maxlength="100" oninput="mmRename(this.value)" style="width:100%;margin:8px 0 12px"></label>
+<label>Livro bíblico<select id="mmBook" onchange="mmSetBook(this.value)" style="width:100%;margin:8px 0 12px"></select></label>
+<p class="muted" style="font-size:12px">Toque em um ramo para editar. Os ramos são organizados automaticamente no desenho.</p>
+<div style="overflow:auto;background:#100f0d;border-radius:14px;border:1px solid #443527"><svg id="mmCanvas" viewBox="0 0 340 330" style="width:100%;min-width:280px;display:block" role="img" aria-label="Mapa mental com tema central e ramificações"></svg></div>
+</div>
+<div class="card"><h3 id="mmEditorTitle">Editar ramo</h3><label>Título do ramo<input id="mmNodeTitle" maxlength="80" style="width:100%;margin:8px 0 12px"></label>
+<label>Passagem ou observação<textarea id="mmNodeNote" rows="3" style="width:100%;margin:8px 0 12px"></textarea></label>
+<label>Referência externa<input id="mmNodeLink" type="url" placeholder="https://..." style="width:100%;margin:8px 0 12px"></label>
+<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="mmSaveNode()">💾 Salvar ramo</button><button class="btn secondary" onclick="mmAddNode()">＋ Novo ramo</button><button class="btn secondary" onclick="mmRemoveNode()">Excluir ramo</button></div>
+<div id="mmLinkBox" style="margin-top:12px"></div><p id="mmStatus" class="muted" aria-live="polite"></p></div>
+<div class="card"><h3>Ramos do mapa</h3><div id="mmNodeList"></div></div>
+<button class="btn secondary" onclick="go('devotional')">← Voltar ao Caderno</button>
+</section>
 <section id="bookstudy" class="screen">
 <div class="ey">Biblioteca da Palavra · Estudo pessoal</div><h1>Os 66 Livros</h1><p class="muted">Explore os livros bíblicos, registre descobertas e guarde referências. O progresso aqui é independente das 365 casas.</p>
 <div class="card"><div class="row"><b id="bookStudyCount">0 de 66 estudados</b><span class="tag">Estudo bíblico</span></div><div class="bar"><i id="bookStudyBar" style="width:0%"></i></div><label>Pesquisar livro<input id="bookStudySearch" type="search" placeholder="Ex.: Gênesis, Salmos, João" oninput="bookStudyRender()" style="width:100%;padding:12px;margin-top:8px;border-radius:12px;background:#11100d;color:#f7f0e4;border:1px solid #443527"></label></div>
-<div id="bookStudyList"></div><div id="bookStudyDetail" hidden></div>
+<button class="btn secondary" onclick="mmOpen()" style="margin-bottom:12px">🧠 Mapas mentais dos livros</button><div id="bookStudyList"></div><div id="bookStudyDetail" hidden></div>
 <button class="btn secondary" onclick="go('library')">← Voltar à biblioteca da jornada</button></section>
 <section id="bible" class="screen">
 <div class="ey">Biblioteca bíblica</div><h1>A Bíblia</h1>
@@ -510,7 +529,7 @@ const submit=document.getElementById('authSubmit'),sw=document.getElementById('a
 const emailGroup=document.getElementById('authEmailGroup'),pwGroup=document.getElementById('authPasswordGroup');
 let mode='login',client=null,currentUser=null,syncTimer=null,syncing=false,loadedUser=null,localOwner=null,suppressSync=false,sessionEpoch=0;
 let shemaSyncRevision=0, shemaSyncedRevision=0, shemaSyncPromise=null;
-const PROGRESS_KEYS=['shemaDevotionalEntries','shemaBookStudy','shemaXP','shemaSteps','shemaAvatar','shemaName','shemaPlayable','shemaHouse','shemaTask4Done','shemaStreakCount','shemaStreakLastDate'];
+const PROGRESS_KEYS=['shemaMindMaps','shemaDevotionalEntries','shemaBookStudy','shemaXP','shemaSteps','shemaAvatar','shemaName','shemaPlayable','shemaHouse','shemaTask4Done','shemaStreakCount','shemaStreakLastDate'];
 const NOTE_PREFIX='shemaNote';
 if(app)app.inert=true;
 function message(s){msg.textContent=s||'';}
@@ -683,5 +702,34 @@ function devRender(){const list=document.getElementById('devList');if(!list)retu
 for(const e of entries){const card=document.createElement('div');card.className='card';const h=document.createElement('h3');h.textContent=e.title;card.append(h);const meta=document.createElement('p');meta.className='muted';const book=e.book!==''&&typeof bibleBooks!=='undefined'?bibleBooks[Number(e.book)]?.[0]:'';meta.textContent=[book,e.verse,e.house?'Casa '+e.house:'',new Date(e.updated).toLocaleDateString('pt-BR')].filter(Boolean).join(' · ');card.append(meta);for(const [label,k] of [['Reflexão','reflection'],['Oração','prayer'],['Aplicação','practice']])if(e[k]){const p=document.createElement('p');const b=document.createElement('b');b.textContent=label+': ';p.append(b,document.createTextNode(e[k]));p.style.whiteSpace='pre-wrap';card.append(p)}if(e.link){try{const u=new URL(e.link);if(['https:','http:'].includes(u.protocol)){const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';a.textContent='🔗 Abrir referência';card.append(a)}}catch(err){}}
 const controls=document.createElement('div');controls.className='row';controls.style.cssText='gap:8px;flex-wrap:wrap;margin-top:12px';const edit=document.createElement('button');edit.className='btn secondary';edit.textContent='Editar';edit.onclick=()=>devEdit(e.id);const del=document.createElement('button');del.className='btn secondary';del.textContent='Excluir';del.onclick=()=>devDelete(e.id);controls.append(edit,del);card.append(controls);list.append(card)}
 const summary=document.getElementById('devBookSummary');summary.replaceChildren();try{const data=JSON.parse(shemaV9Storage.getItem('shemaBookStudy')||'{}');const ids=Object.keys(data).filter(i=>data[i]&&(data[i].theme||data[i].reflection||data[i].prayer));const p=document.createElement('p');p.className='muted';p.textContent=ids.length+' livro(s) com anotações anteriores.';summary.append(p)}catch(err){}}
+</script>
+<script>
+/* Shema V9 · Mapas mentais: dados pessoais armazenados na área isolada V9 */
+(function(){
+const KEY='shemaMindMaps';let active='',selected=0;
+const $=id=>document.getElementById(id);
+function esc(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function read(){try{const a=JSON.parse(shemaV9Storage.getItem(KEY)||'[]');return Array.isArray(a)?a:[]}catch{return []}}
+function write(a){shemaV9Storage.setItem(KEY,JSON.stringify(a));if(typeof queuePush==='function')queuePush()}
+function genesis(){return {id:'genesis-intro',title:'Gênesis · Origens e Promessas',book:'0',nodes:[{title:'Criação',note:'Gênesis 1–2 · Deus cria e dá propósito à humanidade.',link:''},{title:'Queda',note:'Gênesis 3 · A ruptura e suas consequências.',link:''},{title:'Aliança',note:'Gênesis 12; 15; 17 · A promessa a Abraão.',link:''},{title:'José',note:'Gênesis 37–50 · Providência e reconciliação.',link:''}]}}
+function ensure(){let a=read();if(!a.length){a=[genesis()];write(a)}return a}
+function current(){return ensure().find(m=>m.id===active)||ensure()[0]}
+function options(){let a=ensure();if(!a.some(m=>m.id===active))active=a[0].id;$('mmSelect').innerHTML=a.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.title)+'</option>').join('');$('mmSelect').value=active;}
+function bookOptions(){const el=$('mmBook');if(el.options.length)return;el.add(new Option('Sem livro específico',''));if(typeof bibleBooks!=='undefined')bibleBooks.forEach((b,i)=>el.add(new Option(b[0],String(i))))}
+function save(m){let a=ensure(),i=a.findIndex(x=>x.id===m.id);if(i<0)return;a[i]=m;write(a)}
+function textSvg(x,y,txt,max=17){let words=String(txt||'').slice(0,36);return '<text x="'+x+'" y="'+y+'" text-anchor="middle" fill="#f2cf80" font-size="11" font-weight="600">'+esc(words.length>max?words.slice(0,max-1)+'…':words)+'</text>'}
+function draw(m){let n=m.nodes||[],count=Math.max(4,n.length),h=Math.max(330,Math.ceil(count/6)*210),w=340,cx=170,cy=h/2;let svg='<rect width="'+w+'" height="'+h+'" fill="#100f0d"/>';n.forEach((v,i)=>{let angle=(i/count)*Math.PI*2-Math.PI/2,rad=count>6?Math.min(118,110):112,x=cx+Math.cos(angle)*rad,y=cy+Math.sin(angle)*rad;svg+='<path d="M'+cx+' '+cy+' Q'+((cx+x)/2)+' '+((cy+y)/2-10)+' '+x+' '+y+'" fill="none" stroke="#8f7445" stroke-width="2"/>';svg+='<g data-branch="'+i+'" style="cursor:pointer"><rect x="'+(x-54)+'" y="'+(y-22)+'" width="108" height="44" rx="10" fill="'+(selected===i?'#5b4528':'#28221a')+'" stroke="'+(selected===i?'#f2cf80':'#796342')+'"/>'+textSvg(x,y+4,v.title)+'</g>'});svg+='<rect x="110" y="'+(cy-29)+'" width="120" height="58" rx="12" fill="#76582a" stroke="#e2b85f"/>'+textSvg(cx,cy+4,m.title,18);let el=$('mmCanvas');el.setAttribute('viewBox','0 0 340 '+h);el.innerHTML=svg;el.querySelectorAll('[data-branch]').forEach(g=>g.addEventListener('click',()=>window.mmSelectNode(Number(g.dataset.branch))));}
+function render(){options();bookOptions();let m=current();$('mmTitle').value=m.title;$('mmBook').value=m.book||'';if(selected>=m.nodes.length)selected=Math.max(0,m.nodes.length-1);draw(m);$('mmNodeList').innerHTML=m.nodes.map((n,i)=>'<button class="btn secondary" style="display:block;width:100%;text-align:left;margin:6px 0" onclick="mmSelectNode('+i+')">'+(selected===i?'✦ ':'• ')+esc(n.title)+'</button>').join('');let n=m.nodes[selected];$('mmEditorTitle').textContent=n?'Editar ramo '+(selected+1):'Adicione um ramo';$('mmNodeTitle').value=n?.title||'';$('mmNodeNote').value=n?.note||'';$('mmNodeLink').value=n?.link||'';let box=$('mmLinkBox');box.replaceChildren();if(n?.link&&/^https?:\/\//i.test(n.link)){let a=document.createElement('a');a.href=n.link;a.target='_blank';a.rel='noopener noreferrer';a.textContent='🔗 Abrir referência do ramo';box.append(a)}}
+window.mmOpen=function(){ensure();go('mindmaps');render()};
+window.mmChoose=function(id){active=id;selected=0;render()};
+window.mmSelectNode=function(i){selected=i;render()};
+window.mmCreate=function(){let a=ensure(),id='map-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);a.push({id,title:'Novo mapa bíblico',book:'',nodes:[{title:'Primeiro tema',note:'',link:''}]});write(a);active=id;selected=0;render()};
+window.mmDelete=function(){let a=ensure();if(!confirm('Excluir este mapa mental? Essa ação também será sincronizada com a nuvem.'))return;a=a.filter(x=>x.id!==active);if(!a.length)a=[genesis()];write(a);active=a[0].id;selected=0;render()};
+window.mmRename=function(v){let m=current();m.title=v.slice(0,100);save(m);options();draw(m)};
+window.mmSetBook=function(v){let m=current();m.book=v;save(m)};
+window.mmSaveNode=function(){let m=current(),n=m.nodes[selected];if(!n)return;let title=$('mmNodeTitle').value.trim(),link=$('mmNodeLink').value.trim();if(!title){$('mmStatus').textContent='Informe o título do ramo.';return}if(link&&!/^https?:\/\//i.test(link)){$('mmStatus').textContent='Use um link começando com https://';return}n.title=title.slice(0,80);n.note=$('mmNodeNote').value.slice(0,4000);n.link=link.slice(0,1500);save(m);render();$('mmStatus').textContent='Ramo salvo.'};
+window.mmAddNode=function(){let m=current();if(m.nodes.length>=24){$('mmStatus').textContent='Limite de 24 ramos por mapa.';return}m.nodes.push({title:'Novo ramo',note:'',link:''});selected=m.nodes.length-1;save(m);render()};
+window.mmRemoveNode=function(){let m=current();if(!m.nodes.length)return;if(!confirm('Excluir este ramo?'))return;m.nodes.splice(selected,1);selected=0;save(m);render()};
+})();
 </script>
 </body></html>
