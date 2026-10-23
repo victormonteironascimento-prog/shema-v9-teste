@@ -843,6 +843,42 @@ if(!window.supabase?.createClient){message('Serviço de login indisponível. Con
 client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const logout=document.createElement('button');logout.id='shemaLogout';logout.type='button';logout.textContent='Sair';logout.onclick=async()=>{try{clearTimeout(syncTimer);loadedUser=null;sessionEpoch++;await client.auth.signOut();location.reload();}catch(e){setStatus(errText(e));}};document.querySelector('.head').appendChild(logout);
 const panel=document.createElement('div');panel.className='card';panel.id='shemaSyncPanel';panel.innerHTML='<h2>☁️ Minha jornada na nuvem</h2><p id="shemaSyncStatus" class="muted">Aguardando autenticação…</p><button class="btn secondary" id="shemaSyncNow" type="button">Salvar progresso na nuvem</button><button class="btn secondary" id="shemaSyncRestore" type="button">Recuperar progresso da nuvem</button><p class="muted">A Bíblia baixada para uso offline permanece neste aparelho. Não é enviada para a nuvem.</p>';document.getElementById('profile').appendChild(panel);
+
+// Backup manual de leitura: nao altera a sincronizacao nem escreve no Supabase.
+const shemaBackupButton=document.createElement('button');
+shemaBackupButton.type='button';shemaBackupButton.className='btn secondary';
+shemaBackupButton.id='shemaDownloadBackup';shemaBackupButton.textContent='⬇ Baixar backup da minha jornada';
+panel.appendChild(shemaBackupButton);
+const shemaBackupHint=document.createElement('p');shemaBackupHint.className='muted';
+shemaBackupHint.textContent='O arquivo inclui o progresso deste aparelho e, quando disponível, a cópia da nuvem. Guarde-o em local privado.';
+panel.appendChild(shemaBackupHint);
+shemaBackupButton.onclick=async()=>{
+  if(!currentUser||loadedUser!==currentUser.id){setStatus('Entre na sua conta para baixar o backup.');return;}
+  const owner=currentUser.id,epoch=sessionEpoch;
+  shemaBackupButton.disabled=true;
+  try{
+    const local=capture();
+    let cloud=null,cloudStatus='nao_disponivel';
+    try{
+      cloud=await pull();
+      cloudStatus=cloud?'incluido':'sem_registro';
+    }catch(e){cloudStatus='erro_de_leitura';}
+    if(epoch!==sessionEpoch||currentUser?.id!==owner||loadedUser!==owner)return;
+    // O backup registra ambas as versoes separadamente, sem escolher uma como verdadeira.
+    const archive={format:'shema-v9-backup',version:1,exported_at:new Date().toISOString(),
+      account_id:owner,local_progress:local,cloud_progress:cloud,cloud_status:cloudStatus,
+      notice:'Backup privado. As copias local e da nuvem podem divergir. Este arquivo nao importa nem restaura automaticamente os dados.'};
+    const blob=new Blob([JSON.stringify(archive,null,2)],{type:'application/json;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;link.download='shema-v9-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    setStatus(cloudStatus==='incluido'?'✓ Backup local e da nuvem preparado para download.':'✓ Backup local preparado. Cópia da nuvem: '+cloudStatus+'.');
+  }catch(e){setStatus('Não foi possível preparar o backup: '+errText(e));}
+  finally{shemaBackupButton.disabled=false;}
+};
+
 // Reiniciar jornada: só a conta autenticada; duas confirmações; salvar na nuvem antes de limpar localmente.
 const resetButton=document.createElement('button');
 resetButton.type='button';resetButton.className='btn secondary';
